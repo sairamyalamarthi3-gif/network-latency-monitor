@@ -1,43 +1,29 @@
+from ping3 import ping
 import streamlit as st
-import subprocess
-import platform
-import time
 import pandas as pd
+import time
 
-st.set_page_config(page_title="Real-Time Network Monitor", layout="wide")
-st.title("📡 Real-Time Network Latency & Packet Loss Monitor")
+st.title("📡 Real-Time Network Latency Monitor")
 
-# User inputs
-target = st.text_input("Enter IP or Hostname to Monitor", "8.8.8.8")
+target = st.text_input("Enter IP or Hostname", "8.8.8.8")
 interval = st.slider("Ping Interval (seconds)", 1, 12, 2)
 
-placeholder = st.empty()
 latency_list = []
 packet_loss_list = []
 timestamps = []
+placeholder = st.empty()
 
-def ping(host):
-    param = "-n" if platform.system().lower() == "windows" else "-c"
-    command = ["ping", param, "1", host]
-    result = subprocess.run(command, capture_output=True, text=True)
-
-    output = result.stdout.lower()
-
-    if "unreachable" in output or "timed out" in output:
+def ping_host(host):
+    try:
+        latency = ping(host, timeout=1)
+        if latency is None:
+            return None
+        return round(latency * 1000, 2)
+    except:
         return None
 
-    for line in output.split("\n"):
-        if "time=" in line:
-            try:
-                latency = float(line.split("time=")[1].split("ms")[0])
-                return latency
-            except:
-                return None
-    return None
-
-# Real-time loop
 for _ in range(200):
-    latency = ping(target)
+    latency = ping_host(target)
     timestamps.append(time.strftime("%H:%M:%S"))
 
     if latency is None:
@@ -54,15 +40,7 @@ for _ in range(200):
     })
 
     with placeholder.container():
-        st.subheader(f"Monitoring: {target}")
-
-        col1, col2 = st.columns(2)
-        with col1:
-            st.metric("Latest Latency (ms)", latency if latency else "Timeout")
-        with col2:
-            st.metric("Latest Packet Loss (%)", 0 if latency else 100)
-
+        st.metric("Latency (ms)", latency if latency else "Timeout")
         st.line_chart(df.set_index("Time")[["Latency (ms)"]])
-        st.line_chart(df.set_index("Time")[["Packet Loss (%)"]])
 
     time.sleep(interval)
