@@ -1,3 +1,4 @@
 streamlit
 pandas
-ping3
+requests
+sqlite3-binary
